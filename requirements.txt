@@ -1,4 +1,4 @@
-text
+
 fastapi
 uvicorn
 sqlalchemy
@@ -10,3 +10,4 @@ bcrypt==4.0.1
 python-multipart
 pytest
 httpx
+httpx2
