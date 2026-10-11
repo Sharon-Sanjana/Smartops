@@ -15,6 +15,7 @@ from app.core.security import (
     verify_password,
     create_access_token,
     verify_token,
+    get_current_user,
     require_admin,
 )
 
@@ -55,7 +56,7 @@ def create_user(
 @router.get("/users", response_model=list[UserResponse])
 def get_users(
     db: Session = Depends(get_db),
-    current_user: int = Depends(verify_token),
+    current_user=Depends(require_admin),
 ):
     return db.query(User).all()
 
@@ -64,8 +65,14 @@ def get_users(
 def get_user(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: int = Depends(verify_token),
+    current_user: User = Depends(get_current_user),
 ):
+    if current_user.role.lower() != "admin" and current_user.id != user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only access your own profile",
+        )
+
     user = db.query(User).filter(User.id == user_id).first()
 
     if not user:

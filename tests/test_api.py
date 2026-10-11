@@ -486,3 +486,54 @@ def test_resolved_incident_cannot_be_reassigned(client):
     )
 
     assert response.status_code == 400
+
+
+def test_engineer_cannot_list_all_users(client):
+    engineer = create_user(client, "engineer@example.com")
+    headers = login(client, "engineer@example.com")
+
+    response = client.get("/users", headers=headers)
+
+    assert response.status_code == 403
+
+
+def test_engineer_can_view_own_profile_but_not_another_users(client):
+    engineer_one = create_user(client, "engineer1@example.com")
+    create_user(client, "engineer2@example.com")
+
+    headers = login(client, "engineer1@example.com")
+
+    # An engineer can access their own profile.
+    own_response = client.get(
+        f"/users/{engineer_one['id']}",
+        headers=headers,
+    )
+    assert own_response.status_code == 200
+    assert own_response.json()["email"] == "engineer1@example.com"
+
+    # An engineer cannot access another user's profile.
+    other_response = client.get(
+        "/users/2",
+        headers=headers,
+    )
+    assert other_response.status_code == 403
+
+
+def test_admin_can_list_users_and_view_another_profile(client):
+    create_user(client, "admin@example.com", "admin")
+    engineer = create_user(client, "engineer@example.com")
+
+    headers = login(client, "admin@example.com")
+
+    # Admin can list all users.
+    list_response = client.get("/users", headers=headers)
+    assert list_response.status_code == 200
+    assert len(list_response.json()) == 2
+
+    # Admin can view another user's profile.
+    profile_response = client.get(
+        f"/users/{engineer['id']}",
+        headers=headers,
+    )
+    assert profile_response.status_code == 200
+    assert profile_response.json()["email"] == "engineer@example.com"
