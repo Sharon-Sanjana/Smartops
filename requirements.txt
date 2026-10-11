@@ -1,0 +1,12 @@
+text
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+python-dotenv
+python-jose[cryptography]
+passlib
+bcrypt==4.0.1
+python-multipart
+pytest
+httpx
