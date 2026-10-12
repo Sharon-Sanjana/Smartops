@@ -1275,3 +1275,17 @@ def test_get_all_incidents_returns_list(client):
         incident["title"] == "Coverage test incident"
         for incident in response.json()
     )
+
+def test_registration_cannot_assign_admin_role(client):
+    response = client.post(
+        "/users",
+        json={
+            "name": "Malicious User",
+            "email": "malicious@example.com",
+            "password": "Test@12345",
+            "role": "admin",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["role"].lower() == "engineer"

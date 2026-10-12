@@ -6,7 +6,7 @@ class UserCreate(BaseModel):
     name: str
     email: str
     password: str
-    role: str = "engineer"
+    
 
 
 class UserUpdate(BaseModel):
