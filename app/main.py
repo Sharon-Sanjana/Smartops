@@ -17,6 +17,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
+
 # Register application routers
 app.include_router(user_router)
 app.include_router(incident_router)
@@ -26,3 +27,5 @@ app.include_router(analytics_router)
 @app.get("/")
 def home():
     return {"message": "Welcome to SmartOps API"}
+
+
