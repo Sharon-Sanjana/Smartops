@@ -233,6 +233,50 @@ def test_admin_can_assign_incident_to_engineer(client):
     assert response.json()["status"] == "INVESTIGATING"
 
 
+def test_assigning_incident_creates_assignment_event(client):
+    admin = create_user(client, "admin@example.com", "admin")
+    engineer = create_user(client, "engineer@example.com", "engineer")
+    admin_headers = login(client, "admin@example.com")
+
+    incident_response = client.post(
+        "/incidents",
+        json={
+            "title": "Payment service outage",
+            "description": "Payment requests are failing.",
+            "service": "Payment API",
+            "affected_users": 100,
+            "error_count": 50,
+        },
+        headers=admin_headers,
+    )
+    assert incident_response.status_code == 200, incident_response.text
+    incident_id = incident_response.json()["id"]
+
+    assignment_response = client.post(
+        f"/incidents/{incident_id}/assign",
+        params={"engineer_id": engineer["id"]},
+        headers=admin_headers,
+    )
+    assert assignment_response.status_code == 200, assignment_response.text
+
+    events_response = client.get(
+        f"/incidents/{incident_id}/events",
+        headers=admin_headers,
+    )
+    assert events_response.status_code == 200, events_response.text
+
+    events = events_response.json()
+    assignment_events = [
+        event for event in events
+        if event["event_type"] == "ASSIGNED"
+    ]
+
+    assert len(assignment_events) == 1
+    assert assignment_events[0]["user_id"] == admin["id"]
+    assert str(engineer["id"]) in assignment_events[0]["description"]
+
+
+
 def test_create_and_retrieve_incident_event(client):
     create_user(client, "engineer@example.com")
     headers = login(client, "engineer@example.com")
@@ -1289,3 +1333,54 @@ def test_registration_cannot_assign_admin_role(client):
 
     assert response.status_code == 200, response.text
     assert response.json()["role"].lower() == "engineer"
+
+
+
+def test_resolving_incident_creates_resolution_event(client):
+    create_user(client, "admin@example.com", "admin")
+    headers = login(client, "admin@example.com")
+
+    incident_response = client.post(
+        "/incidents",
+        json={
+            "title": "Database connection failure",
+            "description": "The service cannot connect to the database.",
+            "service": "Database",
+            "affected_users": 25,
+            "error_count": 12,
+        },
+        headers=headers,
+    )
+    assert incident_response.status_code == 200, incident_response.text
+    incident_id = incident_response.json()["id"]
+
+    root_cause = "Database connection pool was exhausted."
+    resolution = "Increased the pool limit and restarted the service."
+
+    resolve_response = client.post(
+        f"/incidents/{incident_id}/resolve",
+        json={
+            "root_cause": root_cause,
+            "resolution": resolution,
+        },
+        headers=headers,
+    )
+    assert resolve_response.status_code == 200, resolve_response.text
+
+    events_response = client.get(
+        f"/incidents/{incident_id}/events",
+        headers=headers,
+    )
+    assert events_response.status_code == 200, events_response.text
+
+    resolution_events = [
+        event for event in events_response.json()
+        if event["event_type"] == "RESOLVED"
+    ]
+
+    assert len(resolution_events) == 1
+    assert resolution_events[0]["user_id"] == create_user.__globals__.get(
+        "_unused_user_id", resolution_events[0]["user_id"]
+    )
+    assert root_cause in resolution_events[0]["description"]
+    assert resolution in resolution_events[0]["description"]

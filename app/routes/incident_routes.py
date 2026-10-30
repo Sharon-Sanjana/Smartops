@@ -149,8 +149,17 @@ def assign_incident(
     incident.assigned_to = engineer_id
     incident.status = "INVESTIGATING"
 
+    assignment_event = IncidentEvent(
+    incident_id=incident.id,
+    user_id=current_user.id,
+    event_type="ASSIGNED",
+    description=f"Incident assigned to engineer ID {engineer_id}",
+    )
+
+    db.add(assignment_event)
     db.commit()
     db.refresh(incident)
+
 
     return {
         "message": "Incident assigned successfully",
@@ -266,7 +275,18 @@ def resolve_incident(
     incident.status = "RESOLVED"
     incident.resolved_at = datetime.now(timezone.utc)
 
+    resolution_event = IncidentEvent(
+    incident_id=incident.id,
+    user_id=current_user.id,
+    event_type="RESOLVED",
+    description=(
+        f"Incident resolved. Root cause: {resolution_data.root_cause}. "
+        f"Resolution: {resolution_data.resolution}"
+    ),
+)
+
+    db.add(resolution_event)
     db.commit()
     db.refresh(incident)
-
+    
     return incident
